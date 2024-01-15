@@ -4,7 +4,7 @@ $allanime_base = "https://allanime.to"
 $allanime_api = "https://api.allanime.day"
 $mode = "sub"
 $quality = "best"
-$query = $args[0]
+$query = $args
 
 function search_anime($query)
 {
@@ -45,7 +45,7 @@ function episodes_list($id) {
 }
 
 # extract the video links from reponse of embed urls, extract mp4 links form m3u8 lists
-function get_links($decrypted) {
+function get_links($decrypted, $provider_name) {
     try {
         $res = curl.exe -e "$allanime_base" -s "https://embed.ssbcontent.site$decrypted" -A "$agent"
     }
@@ -139,12 +139,11 @@ function generate_link($provider) {
         'Kir'     { $provider_name = "wetransfer" } # wetransfer(mp4)(single)
         'S-mp4'   { $provider_name = "sharepoint" } # sharepoint(mp4)(single)
         'Luf-mp4' { $provider_name = "gogoanime"  } # gogoanime(m3u8)(multi)
-        # default   { throw "Unknown provider: $provider" }
+        default   { "Unknown provider: $provider" | Out-Host; return }
     }
-    $provider_id = decrypt_allanime $provider.SourceUrl | sed "s/\/clock/\/clock\.json/"
-    # echo "PID: [$provider_id]"
-    if ($provider_id) {
-        get_links "$provider_id"
+    $decrypted = decrypt_allanime $provider.SourceUrl | sed "s/\/clock/\/clock\.json/"
+    if ($decrypted) {
+        get_links $decrypted $provider_name
     }
 }
 
@@ -201,6 +200,7 @@ function nth($prompt, [switch]$no_echo, [parameter(ValueFromPipeline = $true)]$l
     }
 }
 
+# main
 $animes = search_anime $query
 $anime = ,$animes | nth "Select anime"
 
