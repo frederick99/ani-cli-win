@@ -1,4 +1,8 @@
-# ANI Cli in powershell
+<div style="font-family:'Comic Sans MS' !important;">
+
+# Ani Cli in PowerShell
+
+See the original project at https://github.com/pystardust/ani-cli
 
 Usage:
 ```sh
@@ -11,4 +15,5 @@ Important:
 
 
 TODO:
-- everything
+1. remove dependency on git bash executables
+2. everything else

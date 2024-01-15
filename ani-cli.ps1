@@ -205,7 +205,7 @@ $animes = search_anime $query
 $anime = ,$animes | nth "Select anime"
 
 $eps = episodes_list $anime.Id
-$ep = ,$eps | nth "Select episode" -no_echo
+$ep_no = ,$eps | nth "Select episode" -no_echo
 
-$episode_url = get_episode_url $anime.Id $ep "sub"
+$episode_url = get_episode_url $anime.Id $ep_no $mode
 play_episode $episode_url
