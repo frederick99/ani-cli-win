@@ -6,8 +6,7 @@ $mode = "sub"
 $quality = "best"
 $query = $args
 
-function search_anime($query)
-{
+function search_anime($query) {
     $search_gql = 'query(        $search: SearchInput        $limit: Int        $page: Int        $translationType: VaildTranslationTypeEnumType        $countryOrigin: VaildCountryOriginEnumType    ) {    shows(        search: $search        limit: $limit        page: $page        translationType: $translationType        countryOrigin: $countryOrigin    ) {        edges {            _id name availableEpisodes __typename       }    }}'
 
     $res = curl.exe -e "$allanime_base" -s -G "${allanime_api}/api" --data-urlencode "variables={`"search`":{`"allowAdult`":false,`"allowUnknown`":false,`"query`":`"$query`"},`"limit`":40,`"page`":1,`"translationType`":`"$mode`",`"countryOrigin`":`"ALL`"}" --data-urlencode "query=$search_gql" -A "$agent"
@@ -84,17 +83,15 @@ function get_links($decrypted, $provider_name) {
 # #EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1065417,RESOLUTION=1920x1080,NAME="1080p"
 # ep.5.1703913385.1080.m3u8'
 
-                $parsed = ($response
-                            | sed 's|^#.*x||g; s|,.*||g; /^#/d; $!N; s|\n| >|'
-                            | sed "s|>|${relative_link}|g")
-                $result += $parsed | ForEach-Object { [PSCustomObject] @{
-                                                        Quality = [int]$_.split(' ')[0];
-                                                        Link = $_.split(' ')[1] } }
+                $result += ($response
+                            | ForEach-Object { $_ -creplace '^#.*x', '' }
+                            | ForEach-Object { $_ -creplace ',.*', '' }
+                            | Where-Object { -not($_ -match '^#') }
+                            | get_pairs
+                            | ForEach-Object { [PSCustomObject] @{ Quality = $_.First; Link = $relative_link + $_.Second } })
             }
         } else {
-            $result += [PSCustomObject] @{
-                Quality = [int]::MinValue;
-                Link = $link }
+            $result += [PSCustomObject] @{ Quality = [int]::MinValue; Link = $link }
         }
 
         # Write-Host "`e[1;32m$provider_name`e[0m Links Fetched"
@@ -141,7 +138,7 @@ function generate_link($provider) {
         'Luf-mp4' { $provider_name = "gogoanime"  } # gogoanime(m3u8)(multi)
         default   { "Unknown provider: $provider" | Out-Host; return }
     }
-    $decrypted = decrypt_allanime $provider.SourceUrl | sed "s/\/clock/\/clock\.json/"
+    $decrypted = (decrypt_allanime $provider.SourceUrl) -creplace '/clock', '/clock.json'
     if ($decrypted) {
         get_links $decrypted $provider_name
     }
@@ -187,14 +184,36 @@ function play_episode($episode_url) {
     & 'D:\Programs\VideoLAN\VLC\vlc.exe' --play-and-exit $episode_url
 }
 
+function get_pairs([parameter(ValueFromPipeline = $true)]$item) {
+    begin {
+        $has_first = $false
+        $first = $null
+    }
+    process {
+        if ($has_first) {
+            $has_first = $false
+            [PSCustomObject] @{ First = $first; Second = $item }
+        }
+        else {
+            $has_first = $true
+            $first = $item
+        }
+    }
+}
+
 function nth($prompt, [switch]$no_echo, [parameter(ValueFromPipeline = $true)]$list ) {
+    if (-NOT($list)) {
+        "$prompt .. none available :(" | Out-Host
+        exit 1
+    }
+
     if (-NOT($no_echo)) { $list | Out-Host }
     $n = Read-Host "$prompt (1-$($list.Count))"
     $el = $list[$n - 1]
 
     if ($null -eq $el) {
         "Invalid index: $n" | Out-Host
-        nth $prompt -no_echo $list
+        $list | nth $prompt -no_echo
     } else {
         $el
     }
